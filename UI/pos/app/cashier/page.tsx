@@ -36,6 +36,7 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
+
 export default function CashierDashboard() {
   const [category, setCategory] = useState('All Items');
   const [cart, setCart] = useState<any[]>([]);
@@ -49,6 +50,38 @@ export default function CashierDashboard() {
   const date = new Date().toLocaleString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
   });
+
+  // Add total variable
+  const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+  // Add handleDialPadInput function
+  function handleDialPadInput(value: string) {
+    if (activeInput === 'barcode') {
+      if (value === 'clear') {
+        setBarcode('');
+      } else if (value === 'enter') {
+        // Optionally, add barcode to cart here
+      } else {
+        setBarcode((prev) => prev + value);
+      }
+    } else if (activeInput === 'phone') {
+      if (value === 'clear') {
+        setPhone('');
+      } else if (value === 'enter') {
+        // Optionally, process phone number
+      } else {
+        setPhone((prev) => prev + value);
+      }
+    } else if (activeInput === 'cash') {
+      if (value === 'clear') {
+        setCashGiven('');
+      } else if (value === 'enter') {
+        // Optionally, process cash given
+      } else {
+        setCashGiven((prev) => prev + value);
+      }
+    }
+  }
 
   function addToCart(product: any) {
     setCart((prev) => {
@@ -72,7 +105,15 @@ export default function CashierDashboard() {
         return item;
       }).filter(Boolean);
     });
-        {/* Prime Groceries Title (outside cart) */}
+  }
+
+  // ...existing code...
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', background: '#f0fdf4', overflow: 'hidden' }}>
+      {/* Left: Cart and Title */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', padding: '2.5rem 0 0 0' }}>
+        {/* Title */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 18 }}>
           <span style={{
             fontFamily: "'Montserrat', 'Segoe UI', Arial, sans-serif",
@@ -172,15 +213,15 @@ export default function CashierDashboard() {
             </div>
           </div>
         </div>
-      {/* End of left (cart) section */}
-      {/* Total Summary at Bottom Left */}
-      <div style={{ position: 'absolute', left: 32, bottom: 32, zIndex: 10, boxShadow: '0 4px 16px rgba(22,163,74,0.08)', background: '#fff', borderRadius: 16, padding: 16, minWidth: 220 }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ color: '#059669', fontWeight: 700, fontSize: 16, marginBottom: 2, letterSpacing: 1 }}>Total Price:</div>
-          <div style={{ color: '#16a34a', fontWeight: 800, fontSize: 22 }}>Ksh {cart.reduce((sum, item) => sum + (item.price * item.qty), 0).toFixed(2)}</div>
+        {/* Total Summary at Bottom Left */}
+        <div style={{ position: 'absolute', left: 32, bottom: 32, zIndex: 10, boxShadow: '0 4px 16px rgba(22,163,74,0.08)', background: '#fff', borderRadius: 16, padding: 16, minWidth: 220 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#059669', fontWeight: 700, fontSize: 16, marginBottom: 2, letterSpacing: 1 }}>Total Price:</div>
+            <div style={{ color: '#16a34a', fontWeight: 800, fontSize: 22 }}>Ksh {total.toFixed(2)}</div>
+          </div>
         </div>
       </div>
-      {/* Right Side: Payment */}
+      {/* Right: Payment Section */}
       <div style={{ width: 420, background: 'rgba(255,255,255,0.92)', boxShadow: '0 8px 32px 0 rgba(22,163,74,0.10)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', padding: '2.5rem 2.5rem 2.5rem 1.5rem', minHeight: '100vh', borderTopLeftRadius: 36, borderBottomLeftRadius: 36, border: '1.5px solid #bbf7d0', backdropFilter: 'blur(2px)' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
           <div>
