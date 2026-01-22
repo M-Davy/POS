@@ -1,9 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/POS?useSSL=false
-    username: pos_user
-    password: Dave_13797_Mutua
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
