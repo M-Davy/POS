@@ -7,7 +7,7 @@ function InventorySection() {
   const [products, setProducts] = useState([
      { id: 1, name: "Apple", price: 50.0, stock: 100, unit: "pcs" },
      { id: 2, name: "Banana", price: 30.0, stock: 80, unit: "pcs" },
-     { id: 4, name: "Onion", price: 80.0, stock: 10,nit: "kg" },
+     { id: 4, name: "Onion", price: 80.0, stock: 10, unit: "kg" },
      { id: 5, name: "Potato", price: 60.0, stock: 70, unit: "kg" },
   ]);
   const [search, setSearch] = useState("");
@@ -202,7 +202,7 @@ export default function AdminPage() {
           position: "relative",
         }}
       >
-        Prime Groceries
+        ESIT GROCERIES
       </header>
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <aside style={{ width: 240, background: "#fff", borderRight: "2px solid #bbf7d0", padding: "2rem 1rem", display: "flex", flexDirection: "column", gap: 24, justifyContent: "space-between", height: "100vh" }}>
