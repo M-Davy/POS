@@ -357,8 +357,8 @@ export default function AdminPage() {
               <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 24, marginBottom: 32 }}>
                 <h3 style={{ color: "#b91c1c", fontWeight: 700, fontSize: 20, marginBottom: 18 }}>Low Stock Alerts</h3>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, color: "#b91c1c", fontSize: 16 }}>
-                  <li>Onion: 8 left</li>
-                  <li>Potato: 12 left</li>
+                  <li>Onion: 8 kg left</li>
+                  <li>Potato: 12 kg left</li>
                 </ul>
               </div>
             </section>
