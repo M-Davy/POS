@@ -161,7 +161,6 @@ function ProductModal({ onClose, onSave, product, title }: { onClose: () => void
 const SECTIONS = [
   "Dashboard",
   "Inventory",
-  "Settings",
   "Report"
 ];
 
@@ -206,31 +205,55 @@ export default function AdminPage() {
         Prime Groceries
       </header>
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <aside style={{ width: 240, background: "#fff", borderRight: "2px solid #bbf7d0", padding: "2rem 1rem", display: "flex", flexDirection: "column", gap: 24 }}>
-          <div style={{ fontWeight: 800, fontSize: 28, color: "#059669", marginBottom: 32, letterSpacing: 2, textAlign: "center" }}>
-            Admin Panel
+        <aside style={{ width: 240, background: "#fff", borderRight: "2px solid #bbf7d0", padding: "2rem 1rem", display: "flex", flexDirection: "column", gap: 24, justifyContent: "space-between", height: "100vh" }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 28, color: "#059669", marginBottom: 32, letterSpacing: 2, textAlign: "center" }}>
+              Admin Panel
+            </div>
+            {SECTIONS.map(section => (
+              <button
+                key={section}
+                onClick={() => setActiveSection(section)}
+                style={{
+                  background: activeSection === section ? "linear-gradient(90deg, #059669 0%, #16a34a 100%)" : "#fff",
+                  color: activeSection === section ? "#fff" : "#059669",
+                  fontWeight: 700,
+                  border: activeSection === section ? "none" : "1.5px solid #bbf7d0",
+                  borderRadius: 10,
+                  padding: "0.9rem 1.2rem",
+                  marginBottom: 6,
+                  cursor: "pointer",
+                  fontSize: 17,
+                  boxShadow: activeSection === section ? "0 2px 8px #bbf7d0" : "none",
+                  transition: "all 0.2s"
+                }}
+              >
+                {section}
+              </button>
+            ))}
           </div>
-          {SECTIONS.map(section => (
-            <button
-              key={section}
-              onClick={() => setActiveSection(section)}
-              style={{
-                background: activeSection === section ? "linear-gradient(90deg, #059669 0%, #16a34a 100%)" : "#fff",
-                color: activeSection === section ? "#fff" : "#059669",
-                fontWeight: 700,
-                border: activeSection === section ? "none" : "1.5px solid #bbf7d0",
-                borderRadius: 10,
-                padding: "0.9rem 1.2rem",
-                marginBottom: 6,
-                cursor: "pointer",
-                fontSize: 17,
-                boxShadow: activeSection === section ? "0 2px 8px #bbf7d0" : "none",
-                transition: "all 0.2s"
-              }}
-            >
-              {section}
-            </button>
-          ))}
+          <button
+            title="Logout"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: "#fff",
+              color: "#b91c1c",
+              border: "1.5px solid #b91c1c",
+              borderRadius: 10,
+              padding: "0.9rem 1.2rem",
+              fontWeight: 700,
+              fontSize: 17,
+              cursor: "pointer",
+              marginTop: 8,
+              marginBottom: 32
+            }}
+            onClick={() => alert('Logged out!')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1"/></svg>
+            Logout
+          </button>
         </aside>
         <main style={{ flex: 1, padding: "2.5rem 3.5rem", background: "#f0fdf4", minHeight: 0, overflow: "auto" }}>
           {activeSection === "Dashboard" && (
