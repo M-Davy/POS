@@ -34,12 +34,10 @@ public class SecurityConfig {
                 .sessionManagement(management ->
                         management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize ->
-                        authorize.requestMatchers("/api/super-admin/**")
-                        .hasRole("ADMIN")
-                                .requestMatchers("/api/**")
-                                .authenticated()
-
-                                .anyRequest().permitAll()
+                    authorize.requestMatchers("/api/mpesa/**").permitAll()
+                    .requestMatchers("/api/super-admin/**").hasRole("ADMIN")
+                    .requestMatchers("/api/**").authenticated()
+                    .anyRequest().permitAll()
                 ).addFilterBefore(jwtValidator, BasicAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(
