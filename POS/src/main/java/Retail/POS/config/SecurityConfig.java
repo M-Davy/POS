@@ -35,6 +35,7 @@ public class SecurityConfig {
                         management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize ->
                     authorize.requestMatchers("/api/mpesa/**").permitAll()
+                    .requestMatchers("/api/c2b/**").permitAll()
                     .requestMatchers("/api/super-admin/**").hasRole("ADMIN")
                     .requestMatchers("/api/**").authenticated()
                     .anyRequest().permitAll()

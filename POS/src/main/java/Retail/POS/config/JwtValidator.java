@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 public class JwtValidator extends OncePerRequestFilter {
 
-        private static final String[] PUBLIC_ENDPOINTS = {"/api/mpesa/**"};
+        private static final String[] PUBLIC_ENDPOINTS = {"/api/mpesa/**", "/api/c2b/**"};
         private static final AntPathMatcher pathMatcher = new AntPathMatcher();
         private static final Logger logger = LoggerFactory.getLogger(JwtValidator.class);
 

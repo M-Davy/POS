@@ -1,5 +1,7 @@
 package Retail.POS.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -27,10 +29,13 @@ public class MpesaAuthService {
 
         ResponseEntity<String> response = restTemplate.exchange(TOKEN_URL, HttpMethod.GET, request, String.class);
         if (response.getStatusCode() == HttpStatus.OK) {
-            // Extract access_token from response JSON
-            String body = response.getBody();
-            String token = body.replaceAll(".*\"access_token\":\"(.*?)\".*", "$1");
-            return token;
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode node = mapper.readTree(response.getBody());
+                return node.get("access_token").asText();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to parse access token from M-Pesa API response", e);
+            }
         }
         throw new RuntimeException("Failed to get access token from M-Pesa API");
     }
