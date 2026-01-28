@@ -3,6 +3,7 @@ package Retail.POS.service;
 import Retail.POS.domain.OrderStatus;
 import Retail.POS.payload.dto.OrderRequestDto;
 import Retail.POS.payload.dto.OrderResponseDto;
+import Retail.POS.payload.dto.TopProductDto;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,4 +20,7 @@ public interface OrderService {
     List<OrderResponseDto> getOrdersByStatus(OrderStatus status);
 
 
+    Double getMonthlySalesTotal();
+
+    List<TopProductDto> getTopSellingProducts();
 }

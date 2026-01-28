@@ -7,7 +7,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -23,56 +22,53 @@ import java.util.List;
 @Component
 public class JwtValidator extends OncePerRequestFilter {
 
+
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-            String jwt = request.getHeader(JwtConstant.JWT_HEADER);
+        String jwt = request.getHeader(JwtConstant.JWT_HEADER);
 
-            if(jwt!=null){
-                jwt = jwt.substring(7);
+        // 1. Check if the header exists and starts with Bearer
+        if (jwt != null && jwt.startsWith("Bearer ")) {
+            jwt = jwt.substring(7);
 
-                try{
-                    SecretKey key = Keys.hmacShaKeyFor(JwtConstant.JWT_SECRET.getBytes());
-                    Claims claims = Jwts.parser()
-                            .setSigningKey(key)
-                            .parseClaimsJws(jwt)
-                            .getBody();
+            try {
+                SecretKey key = Keys.hmacShaKeyFor(JwtConstant.JWT_SECRET.getBytes());
+                Claims claims = Jwts.parserBuilder() // Use parserBuilder for modern JJWT versions
+                        .setSigningKey(key)
+                        .build()
+                        .parseClaimsJws(jwt)
+                        .getBody();
 
-                    String email = String.valueOf(claims.get("email"));
-                    String authorities = String.valueOf(claims.get("authorities"));
+                String email = String.valueOf(claims.get("email"));
+                String authorities = String.valueOf(claims.get("authorities"));
 
-                    List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(authorities);
-                    Authentication auth = new UsernamePasswordAuthenticationToken(email, null, auths);
-                    SecurityContextHolder.getContext().setAuthentication(auth);
+                List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(authorities);
+                Authentication auth = new UsernamePasswordAuthenticationToken(email, null, auths);
+                SecurityContextHolder.getContext().setAuthentication(auth);
 
-                } catch (Exception e) {
-                    throw new BadCredentialsException("Invalid credentials");
-                }
-
+            } catch (Exception e) {
+                // Instead of throwing, you can also send a 401 directly
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Invalid Token...");
+                return;
             }
-            filterChain.doFilter(request, response);
+        }
+
+        // 2. Always continue the chain for requests without tokens (like login)
+        filterChain.doFilter(request, response);
+    }
+
+    // 3. Skip this filter entirely for login/register endpoints
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getServletPath();
+        // 1. Skip for Auth endpoints
+        // 2. Skip for ALL OPTIONS requests (CORS Preflight)
+        return path.startsWith("/api/auth/") || request.getMethod().equals("OPTIONS");
     }
 }
-/*
-*
-* JWT token (from client)
-        ↓
-JwtValidator parses token
-        ↓
-Claims extracted → email + roles
-        ↓
-Roles converted → List<GrantedAuthority>
-        ↓
-Create Authentication object (UsernamePasswordAuthenticationToken)
-        ↓
-Put Authentication into SecurityContext
-        ↓
-Spring Security uses this context for authorization checks
-*
-*
-*
-*
-* */

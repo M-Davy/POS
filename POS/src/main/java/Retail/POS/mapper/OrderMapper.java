@@ -9,7 +9,7 @@ public class OrderMapper {
     public static OrderResponseDto toDto(Order order) {
         return OrderResponseDto.builder()
                 .id(order.getId())
-                .items(
+                .orderItems(
                         order.getOrderItems().stream()
                                 .map(item -> OrderItemResponseDto.builder()
                                         .productId(item.getProduct().getId())
@@ -20,6 +20,7 @@ public class OrderMapper {
                                         .build()
                                 ).toList()
                 )
+                .paymentMethod(order.getPaymentMethod())
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus().name())
                 .createdAt(order.getCreatedAt())

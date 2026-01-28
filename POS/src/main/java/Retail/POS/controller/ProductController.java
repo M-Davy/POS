@@ -66,8 +66,8 @@ public class ProductController {
 
     @GetMapping("/search")
     public ResponseEntity<List<ProductDto>> searchByKeyword(
-            @RequestParam String keyword,
-            @RequestHeader ("Authorization") String jwt) throws UserException{
+            @RequestParam String keyword
+            ) throws UserException{
 
         return ResponseEntity.ok(productService.searchByKeyword(keyword));
 

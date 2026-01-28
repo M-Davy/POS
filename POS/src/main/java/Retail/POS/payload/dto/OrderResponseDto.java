@@ -1,5 +1,6 @@
 package Retail.POS.payload.dto;
 
+import Retail.POS.domain.PaymentMethod;
 import lombok.Builder;
 import lombok.Data;
 
@@ -11,8 +12,9 @@ import java.util.List;
 public class OrderResponseDto{
 
     private Long id;
-    private List<OrderItemResponseDto> items;
+    private List<OrderItemResponseDto> orderItems;
     private Double totalAmount;
     private String status;
+    private PaymentMethod paymentMethod;
     private LocalDateTime createdAt;
 }

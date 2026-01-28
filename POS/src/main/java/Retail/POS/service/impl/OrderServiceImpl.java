@@ -10,6 +10,7 @@ import Retail.POS.models.Product;
 import Retail.POS.payload.dto.OrderItemRequestDto;
 import Retail.POS.payload.dto.OrderRequestDto;
 import Retail.POS.payload.dto.OrderResponseDto;
+import Retail.POS.payload.dto.TopProductDto;
 import Retail.POS.repository.InventoryRepository;
 import Retail.POS.repository.OrderRepository;
 import Retail.POS.repository.ProductRepository;
@@ -19,8 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -74,6 +77,9 @@ public class OrderServiceImpl implements OrderService {
         Order order = Order.builder()
                 .orderItems(orderItems)
                 .totalAmount(total)
+                .status(OrderStatus.COMPLETED) // Set to COMPLETED for POS
+                .createdAt(LocalDateTime.now()) // Ensure timestamp is set
+                .paymentMethod(request.getPaymentMethod()) // Don't forget to save the method!
                 .build();
 
         orderItems.forEach(i -> i.setOrder(order));
@@ -129,4 +135,41 @@ public class OrderServiceImpl implements OrderService {
                 .toList();
     }
 
+    @Override
+    public Double getMonthlySalesTotal() {
+        LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+
+        return orderRepository.findAll().stream()
+                .filter(order -> !order.getCreatedAt().isBefore(startOfMonth.atStartOfDay()))
+                .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
+                .mapToDouble(Order::getTotalAmount)
+                .sum();
+    }
+
+    @Override
+    public List<TopProductDto> getTopSellingProducts() {
+        return orderRepository.findAll().stream()
+                .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
+                .flatMap(order -> order.getOrderItems().stream())
+                .collect(Collectors.groupingBy(
+                        item -> item.getProduct().getName(),
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                list -> {
+                                    long totalQty = list.stream().mapToLong(OrderItem::getQuantity).sum();
+                                    double totalRev = list.stream().mapToDouble(item -> item.getPrice() * item.getQuantity()).sum();
+                                    return new TopProductDto("", totalQty, totalRev);
+                                }
+                        )
+                ))
+                .entrySet().stream()
+                .map(entry -> {
+                    TopProductDto dto = entry.getValue();
+                    dto.setName(entry.getKey());
+                    return dto;
+                })
+                .sorted((a, b) -> b.getQuantitySold().compareTo(a.getQuantitySold()))
+                .limit(5) // Get top 5
+                .collect(Collectors.toList());
+    }
 }

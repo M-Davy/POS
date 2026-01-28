@@ -3,6 +3,7 @@ package Retail.POS.controller;
 import Retail.POS.domain.OrderStatus;
 import Retail.POS.payload.dto.OrderRequestDto;
 import Retail.POS.payload.dto.OrderResponseDto;
+import Retail.POS.payload.dto.TopProductDto;
 import Retail.POS.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,18 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+
+    @GetMapping("/monthly/total")
+    public ResponseEntity<Double> getMonthlySalesTotal() {
+        // Implementation: Sum sales where date is >= first day of current month
+        return ResponseEntity.ok(orderService.getMonthlySalesTotal());
+    }
+
+    @GetMapping("/reports/top-selling")
+    public ResponseEntity<List<TopProductDto>> getTopSellingProducts() {
+        // Implementation: Group order items by product and sum quantity
+        return ResponseEntity.ok(orderService.getTopSellingProducts());
+    }
 
     @PostMapping
     public ResponseEntity<OrderResponseDto> createOrder(
