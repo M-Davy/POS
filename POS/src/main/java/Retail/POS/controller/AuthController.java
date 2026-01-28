@@ -3,10 +3,9 @@ package Retail.POS.controller;
 
 import Retail.POS.exceptions.UserException;
 import Retail.POS.payload.dto.UserDto;
-import Retail.POS.payload.response.AuthResponse;
+import Retail.POS.payload.response.ApiResponse;
 import Retail.POS.service.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,14 +21,14 @@ public class AuthController {
 
 
     @PostMapping("/signup")
-    public ResponseEntity<AuthResponse> signup(
+    public ResponseEntity<ApiResponse> signup(
             @RequestBody UserDto userDto) throws UserException {
 
         return ResponseEntity.ok(authService.signup(userDto));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(
+    public ResponseEntity<ApiResponse> login(
             @RequestBody UserDto userDto) throws UserException {
 
         return ResponseEntity.ok(authService.login(userDto));

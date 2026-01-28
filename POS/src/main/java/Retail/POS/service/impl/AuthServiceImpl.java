@@ -6,7 +6,7 @@ import Retail.POS.exceptions.UserException;
 import Retail.POS.mapper.UserMapper;
 import Retail.POS.models.User;
 import Retail.POS.payload.dto.UserDto;
-import Retail.POS.payload.response.AuthResponse;
+import Retail.POS.payload.response.ApiResponse;
 import Retail.POS.repository.UserRepository;
 import Retail.POS.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -32,7 +31,7 @@ public class AuthServiceImpl implements AuthService {
     private final CustomUserImplementation customUserImplementation;
 
     @Override
-    public AuthResponse signup(UserDto userDto) throws UserException {
+    public ApiResponse signup(UserDto userDto) throws UserException {
         User user = userRepository.findByEmail(userDto.getEmail());
         if(user != null) {
             throw new UserException("User with email " + userDto.getEmail() + " already exists");
@@ -60,15 +59,15 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String jwt = jwtProvider.generateToken(authentication);
-        AuthResponse authResponse = new AuthResponse();
-        authResponse.setJwt(jwt);
-        authResponse.setMessage("Successfully registered");
-        authResponse.setUser(UserMapper.toDto(savedUser));
-        return authResponse;
+        ApiResponse apiResponse = new ApiResponse();
+        apiResponse.setJwt(jwt);
+        apiResponse.setMessage("Successfully registered");
+        apiResponse.setUser(UserMapper.toDto(savedUser));
+        return apiResponse;
     }
 
     @Override
-    public AuthResponse login(UserDto userDto) throws UserException {
+    public ApiResponse login(UserDto userDto) throws UserException {
         String email = userDto.getEmail();
         String password = userDto.getPassword();
 
@@ -84,12 +83,12 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 
-        AuthResponse authResponse = new AuthResponse();
-        authResponse.setJwt(jwt);
-        authResponse.setMessage("Login Successful");
-        authResponse.setUser(UserMapper.toDto(user));
+        ApiResponse apiResponse = new ApiResponse();
+        apiResponse.setJwt(jwt);
+        apiResponse.setMessage("Login Successful");
+        apiResponse.setUser(UserMapper.toDto(user));
 
-        return authResponse;
+        return apiResponse;
     }
 
     private Authentication authenticate(String email, String password) throws UserException {
