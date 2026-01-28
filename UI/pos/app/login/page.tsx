@@ -53,7 +53,7 @@ export default function LoginPage() {
         <div className="form-side">
           <div className="title-with-logo">
             <Image src="/images/logo.jpeg" alt="Logo" width={50} height={50} className="title-logo" />
-            <h1>PRIME GROCERIES</h1>
+            <h1>ESIT GROCERIES</h1>
           </div>
           <form id="login-form" onSubmit={handleSubmit}>
             <div className="form-group">

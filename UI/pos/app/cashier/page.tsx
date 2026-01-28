@@ -29,6 +29,7 @@ const CATEGORIES = [
 ];
 
 function getInitials(name: string) {
+
   return name
     .split(' ')
     .map((n) => n[0])
@@ -113,25 +114,46 @@ export default function CashierDashboard() {
     <div style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', background: '#f0fdf4', overflow: 'hidden' }}>
       {/* Left: Cart and Title */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', padding: '2.5rem 0 0 0' }}>
-        {/* Title */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 18 }}>
-          <span style={{
-            fontFamily: "'Montserrat', 'Segoe UI', Arial, sans-serif",
-            fontWeight: 700,
-            fontSize: 34,
-            color: '#059669',
-            letterSpacing: 2,
-            textShadow: '0 2px 0 #bbf7d0',
-            padding: '0.5rem 0',
-            borderRadius: 12,
-            background: 'rgba(255,255,255,0.85)',
-            boxShadow: '0 2px 8px #bbf7d0',
-            minWidth: 320,
-            textAlign: 'center',
-            lineHeight: 1.1
-          }}>
-            Prime Groceries
-          </span>
+        {/* Title and Search Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 18, position: 'relative', minHeight: 60 }}>
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'absolute', left: 0, right: 0, pointerEvents: 'none' }}>
+            <span style={{
+              fontFamily: "'Montserrat', 'Segoe UI', Arial, sans-serif",
+              fontWeight: 700,
+              fontSize: 34,
+              color: '#059669',
+              letterSpacing: 2,
+              textShadow: '0 2px 0 #bbf7d0',
+              padding: '0.5rem 0',
+              borderRadius: 12,
+              background: 'rgba(255,255,255,0.85)',
+              boxShadow: '0 2px 8px #bbf7d0',
+              minWidth: 320,
+              textAlign: 'center',
+              lineHeight: 1.1,
+              pointerEvents: 'auto',
+              zIndex: 2
+            }}>
+              ESIT GROCERIES
+            </span>
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, zIndex: 3 }}>
+            <input
+              type="text"
+              placeholder="Search..."
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: '1.5px solid #16a34a',
+                fontSize: 16,
+                minWidth: 160,
+                outline: 'none',
+                background: '#fff',
+                color: '#111'
+              }}
+            />
+            <FaSearch style={{ color: '#16a34a', fontSize: 18 }} />
+          </div>
         </div>
         {/* Cart Section */}
         <div style={{ flex: 1, overflowY: 'auto', marginBottom: 0, paddingBottom: 160, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
@@ -304,5 +326,4 @@ export default function CashierDashboard() {
       </div>
     </div>
   );
-}
 }
