@@ -191,14 +191,22 @@ function InventorySection() {
   );
 
   async function handleAdd(formData: any) {
+
+    let cleanCode = formData.code;
+  if (formData.type === 'WEIGHED' && cleanCode.length === 13 && cleanCode.startsWith('20')) {
+    cleanCode = cleanCode.substring(2, 7);
+  }
     try {
-      const product = await productAPI.create({
+
+      const productData = {
         name: formData.name,
-        code: formData.code,
-        sellingPrice: parseFloat(formData.price),
-        markedPrice: parseFloat(formData.price),
-        type: formData.type
-      });
+        code: cleanCode,
+        type: formData.type, 
+        sellingPrice: parseFloat(formData.price), 
+        pricePerKg: formData.type === 'WEIGHED' ? parseFloat(formData.price) : null,
+      };
+
+      const product = await productAPI.create(productData);
       await inventoryAPI.create({
         productId: product.id,
         quantity: parseInt(formData.stock)
@@ -399,7 +407,7 @@ function ProductModal({ onClose, onSave, product, title }: any) {
           <option value="FIXED">Fixed Price (Per Piece/Pack)</option>
           <option value="WEIGHED">Weighed (Per KG/Scale Item)</option>
         </select>
-        
+
         <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>Item Code / SKU</label>
         <input 
           placeholder="e.g. BEV-001"

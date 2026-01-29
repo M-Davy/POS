@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FaSearch, FaShoppingCart, FaTrash, FaPlus } from "react-icons/fa";
 import { inventoryAPI, scanAPI, orderAPI, productAPI, type Product, type CartItemDto } from "@/lib/api-service";
 
@@ -11,6 +11,37 @@ interface CartItem extends Product {
 const PRODUCT_EMOJIS: { [key: string]: string } = {
   'default': '📦',
 };
+
+function BarcodeEmulator({ onScan }: { onScan: (code: string) => void }) {
+  const mockBarcodes = [
+    { name: "Beef 0.5kg (Ksh 225.00)", code: "2000107225000" },
+    { name: "Beef 1.0kg (Ksh 450.00)", code: "2000107045000" },
+    { name: "Beef 0.25kg (Ksh 112.50)", code: "2000107011250" }
+  ];
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 20, left: 20, background: '#334155', 
+      padding: 15, borderRadius: 12, border: '1px solid #475569', zIndex: 1000
+    }}>
+      <h4 style={{ color: '#fff', margin: '0 0 10px 0', fontSize: 12 }}>Scale Emulator</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {mockBarcodes.map(item => (
+          <button 
+            key={item.code}
+            onClick={() => onScan(item.code)}
+            style={{ 
+              background: '#1e293b', color: '#10b981', border: '1px solid #10b981',
+              padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 11
+            }}
+          >
+            Scan {item.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function CashierDashboard() {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -25,13 +56,25 @@ export default function CashierDashboard() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showProducts, setShowProducts] = useState(false);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
+
+useEffect(() => {
+  const handleGlobalClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+    
+    if (!isInput) {
+      barcodeInputRef.current?.focus();
+    }
+  };
+
+  window.addEventListener('click', handleGlobalClick);
+  return () => window.removeEventListener('click', handleGlobalClick);
+}, []);
   
-  // Fetch inventory on mount
   useEffect(() => {
-    // Debug: Check if token exists
     const token = localStorage.getItem('token');
-    console.log('🔑 Token exists:', !!token);
-    console.log('🔑 Token preview:', token ? token.substring(0, 20) + '...' : 'NONE');
+ 
     
     if (!token) {
       setError('No authentication token found. Please login again.');
@@ -171,6 +214,77 @@ export default function CashierDashboard() {
     setCart((prev) => prev.filter(item => item.id !== id));
   }
 
+  const printReceipt = () => {
+    const printWindow = window.open('', '_blank');
+    
+    if (!printWindow) {
+      setError("Pop-up blocked! Please allow pop-ups to print receipts.");
+      return;
+    }
+  
+    const receiptDate = new Date().toLocaleString();
+  
+    const itemRows = cart.map(item => `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+        <span style="flex: 2;">${item.name.substring(0, 18)}${item.name.length > 18 ? '..' : ''}</span>
+        <span style="flex: 1; text-align: right;">${item.qty}${item.type === 'WEIGHED' ? 'kg' : ''}</span>
+        <span style="flex: 1; text-align: right;">${(item.sellingPrice * item.qty).toFixed(2)}</span>
+      </div>
+    `).join('');
+  
+    // 2. Write content to the document
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt</title>
+          <style>
+            @page { size: 80mm auto; margin: 0; }
+            body { 
+              font-family: 'Courier New', Courier, monospace; 
+              width: 72mm; /* Standard printable area for 80mm paper */
+              padding: 4mm; 
+              font-size: 12px; 
+              color: #000;
+            }
+            .divider { border-top: 1px dashed #000; margin: 5px 0; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="center bold" style="font-size: 16px;">ESIT GROCERIES</div>
+          <div class="center">Nairobi, Kenya</div>
+          <div class="center">${receiptDate}</div>
+          <div class="divider"></div>
+          <div style="display: flex; justify-content: space-between;" class="bold">
+            <span style="flex: 2;">ITEM</span>
+            <span style="flex: 1; text-align: right;">QTY</span>
+            <span style="flex: 1; text-align: right;">TOTAL</span>
+          </div>
+          <div class="divider"></div>
+          ${itemRows}
+          <div class="divider"></div>
+          <div style="display: flex; justify-content: space-between;" class="bold">
+            <span>GRAND TOTAL</span>
+            <span>Ksh ${total.toFixed(2)}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="center">THANK YOU FOR YOUR PATRONAGE</div>
+        </body>
+      </html>
+    `);
+  
+    // 3. Close the document stream and trigger print
+    printWindow.document.close();
+    
+    // Small timeout ensures styles are loaded before print dialog pops up
+    setTimeout(() => {
+      printWindow.print();
+      // Optional: close the tab after printing
+      // printWindow.close(); 
+    }, 250);
+  };
+
   // Complete payment
   const completePayment = async () => {
     if (cart.length === 0) {
@@ -209,6 +323,7 @@ export default function CashierDashboard() {
       
       setSuccess(`Payment completed! Order #${order.id}`);
       
+      printReceipt();
       // Clear cart and reset
       setCart([]);
       setPhone('');
@@ -242,7 +357,7 @@ export default function CashierDashboard() {
   };
   const handleLogout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user'); // or whatever key you use
+    localStorage.removeItem('user');
     window.location.href = '/login';
   };
 
@@ -268,6 +383,7 @@ export default function CashierDashboard() {
   <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <input
+        ref={barcodeInputRef} 
         type="text"
         placeholder="Search products..."
         value={searchTerm}
@@ -286,7 +402,6 @@ export default function CashierDashboard() {
       <FaSearch style={{ color: '#10b981', fontSize: 18 }} />
     </div>
 
-    {/* --- NEW LOGOUT BUTTON --- */}
     <button 
       onClick={handleLogout}
       style={{
@@ -453,7 +568,7 @@ export default function CashierDashboard() {
           padding: '2rem',
           border: '1px solid #374151',
           overflowY: 'auto',
-          marginBottom: 140
+         
         }}>
           <h3 style={{ 
             margin: '0 0 1.5rem 0', 
@@ -507,70 +622,68 @@ export default function CashierDashboard() {
                   padding: '0.8rem',
                   marginBottom: '0.5rem',
                   border: '1px solid #374151',
-                }}>
+              }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 24 }}>{PRODUCT_EMOJIS['default']}</span>
-                    <div>
-                      <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{item.name}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>{item.code}</div>
-                    </div>
+                      <span style={{ fontSize: 24 }}>{PRODUCT_EMOJIS['default']}</span>
+                      <div>
+                          <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{item.name}</div>
+                          <div style={{ fontSize: 11, color: '#6b7280' }}>{item.code}</div>
+                      </div>
                   </div>
                   
                   <span style={{ color: '#10b981', fontWeight: 600 }}>
-                    Ksh {item.sellingPrice.toFixed(2)}
+                      Ksh {item.sellingPrice.toFixed(2)}
                   </span>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <button 
-                      onClick={() => changeQty(item.id, -1)} 
-                      style={{ 
-                        background: '#374151', 
-                        border: 'none', 
-                        borderRadius: 6, 
-                        padding: '4px 10px', 
-                        color: '#10b981', 
-                        fontWeight: 700, 
-                        cursor: 'pointer' 
-                      }}
-                    >
-                      -
-                    </button>
-                    <span style={{ minWidth: 30, textAlign: 'center', fontWeight: 700, color: '#fff' }}>
-                      {item.qty}
-                    </span>
-                    <button 
-                      onClick={() => changeQty(item.id, 1)} 
-                      style={{ 
-                        background: '#374151', 
-                        border: 'none', 
-                        borderRadius: 6, 
-                        padding: '4px 10px', 
-                        color: '#10b981', 
-                        fontWeight: 700, 
-                        cursor: 'pointer' 
-                      }}
-                    >
-                      +
-                    </button>
+                      {/* Only show minus button for Fixed products */}
+                      {item.type !== 'WEIGHED' && (
+                          <button 
+                              onClick={() => changeQty(item.id, -1)} 
+                              style={{ 
+                                  background: '#374151', border: 'none', borderRadius: 6, 
+                                  padding: '4px 10px', color: '#10b981', fontWeight: 700, cursor: 'pointer' 
+                              }}
+                          >
+                              -
+                          </button>
+                      )}
+              
+                      <span style={{ minWidth: 45, textAlign: 'center', fontWeight: 700, color: '#fff', fontSize: 14 }}>
+                          {item.qty}
+                          <span style={{ fontSize: 10, marginLeft: 2, color: '#9ca3af' }}>
+                              {item.type === 'WEIGHED' ? 'kg' : 'pcs'}
+                          </span>
+                      </span>
+              
+                      {/* Only show plus button for Fixed products */}
+                      {item.type !== 'WEIGHED' && (
+                          <button 
+                              onClick={() => changeQty(item.id, 1)} 
+                              style={{ 
+                                  background: '#374151', border: 'none', borderRadius: 6, 
+                                  padding: '4px 10px', color: '#10b981', fontWeight: 700, cursor: 'pointer' 
+                              }}
+                          >
+                              +
+                          </button>
+                      )}
                   </div>
                   
                   <span style={{ fontWeight: 700, color: '#10b981' }}>
-                    Ksh {(item.sellingPrice * item.qty).toFixed(2)}
+                      Ksh {(item.sellingPrice * item.qty).toFixed(2)}
                   </span>
                   
                   <button 
-                    onClick={() => removeFromCart(item.id)}
-                    style={{ 
-                      background: 'transparent', 
-                      border: 'none', 
-                      color: '#ef4444', 
-                      cursor: 'pointer',
-                      padding: '4px'
-                    }}
+                      onClick={() => removeFromCart(item.id)}
+                      style={{ 
+                          background: 'transparent', border: 'none', color: '#ef4444', 
+                          cursor: 'pointer', padding: '4px'
+                      }}
                   >
-                    <FaTrash size={14} />
+                      <FaTrash size={14} />
                   </button>
-                </div>
+              </div>
               ))}
             </>
           )}
@@ -578,10 +691,6 @@ export default function CashierDashboard() {
 
         {/* Total at Bottom */}
         <div style={{ 
-          position: 'absolute', 
-          left: 40, 
-          bottom: 32, 
-          right: 32,
           background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)',
           borderRadius: 16,
           padding: '1.5rem 2rem',
@@ -838,6 +947,8 @@ export default function CashierDashboard() {
           {loading ? 'Processing...' : 'Complete Payment'}
         </button>
       </div>
+
+      {/* <BarcodeEmulator onScan={(code) => handleScan(code)} /> */}
     </div>
   );
 }
