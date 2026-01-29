@@ -16,53 +16,48 @@ public class ScanServiceImpl implements ScanService {
 
     @Override
     public CartItemDto handleScan(String barcode) {
-
-        if (barcode.startsWith("20")) {
-            // weighed item
+        if (barcode.length() == 13 && barcode.startsWith("20")) {
             return handleWeighedBarcode(barcode);
-        } else {
-            // fixed item
-            return handleFixedBarcode(barcode);
         }
+
+
+        return handleFixedBarcode(barcode);
     }
 
     private CartItemDto handleWeighedBarcode(String barcode) {
-        String plu = barcode.substring(2, 6);
-        double weightKg = Integer.parseInt(barcode.substring(6, 11)) / 1000.0;
+        String plu = barcode.substring(2, 7);
+        double totalFromBarcode = Integer.parseInt(barcode.substring(7, 12)) / 100.0;
 
         Product product = productRepository.findByCode(plu)
-                .orElseThrow(() -> new RuntimeException("Unknown PLU"));
+                .orElseThrow(() -> new RuntimeException("PLU " + plu + " not found in system"));
 
         if (product.getType() != ProductType.WEIGHED) {
-            throw new RuntimeException("Barcode indicates weighed item but product is fixed");
+            throw new RuntimeException("Product " + product.getName() + " is not set as a WEIGHED item.");
         }
 
-        double total = weightKg * product.getPricePerKg();
+        double weight = totalFromBarcode / product.getSellingPrice();
 
         return CartItemDto.builder()
+                .productId(product.getId())
                 .productName(product.getName())
-                .unitPrice(product.getPricePerKg())
-                .quantity(weightKg)
-                .total(total)
+                .productSku(product.getCode())
+                .unitPrice(product.getSellingPrice())
+                .quantity(weight)
+                .total(totalFromBarcode)
                 .build();
     }
 
     private CartItemDto handleFixedBarcode(String barcode) {
-
         Product product = productRepository.findByCode(barcode)
-                .orElseThrow(() -> new RuntimeException("Unknown product barcode"));
-
-        if (product.getType() != ProductType.FIXED) {
-            throw new RuntimeException("Product is fixed type, but barcode indicates otherwise");
-        }
-
-        double total = product.getSellingPrice();
+                .orElseThrow(() -> new RuntimeException("Barcode " + barcode + " not recognized"));
 
         return CartItemDto.builder()
+                .productId(product.getId())
                 .productName(product.getName())
+                .productSku(product.getCode())
                 .unitPrice(product.getSellingPrice())
                 .quantity(1.0)
-                .total(total)
+                .total(product.getSellingPrice())
                 .build();
     }
 }
