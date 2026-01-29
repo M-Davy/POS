@@ -1,5 +1,6 @@
 package Retail.POS.payload.dto;
 
+import Retail.POS.domain.ProductType;
 import jakarta.persistence.Column;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +22,10 @@ public class ProductDto {
     private double markedPrice;
     private double sellingPrice;
 
+    private Double pricePerKg;
     private String image;
+
+    private ProductType type;
 
 //    private Category category;
 

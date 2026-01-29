@@ -8,6 +8,10 @@ import Retail.POS.service.ScanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
+
 @Service
 @RequiredArgsConstructor
 public class ScanServiceImpl implements ScanService {
@@ -34,8 +38,11 @@ public class ScanServiceImpl implements ScanService {
         if (product.getType() != ProductType.WEIGHED) {
             throw new RuntimeException("Product " + product.getName() + " is not set as a WEIGHED item.");
         }
+        double rawWeight = totalFromBarcode / product.getSellingPrice();
 
-        double weight = totalFromBarcode / product.getSellingPrice();
+        double weight = BigDecimal.valueOf(rawWeight)
+                .setScale(3, RoundingMode.HALF_UP)
+                .doubleValue();
 
         return CartItemDto.builder()
                 .productId(product.getId())
