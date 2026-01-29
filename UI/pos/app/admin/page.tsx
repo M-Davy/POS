@@ -1,369 +1,459 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { inventoryAPI, orderAPI, productAPI } from "@/lib/api-service"; 
+// Import useRouter for redirection after logout
+import { useRouter } from "next/navigation"; 
 
-// --- Inventory Section with all 8 features ---
-function InventorySection() {
-  const [products, setProducts] = useState([
-     { id: 1, name: "Apple", price: 50.0, stock: 100, unit: "pcs" },
-     { id: 2, name: "Banana", price: 30.0, stock: 80, unit: "pcs" },
-     { id: 4, name: "Onion", price: 80.0, stock: 10, unit: "kg" },
-     { id: 5, name: "Potato", price: 60.0, stock: 70, unit: "kg" },
-  ]);
-  const [search, setSearch] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
-  const [showEdit, setShowEdit] = useState<any>(null);
-  const [imported, setImported] = useState("");
+// --- Dashboard Section ---
+function DashboardSection() {
+  const [stats, setStats] = useState({
+    todaySales: 0,
+    monthSales: 0,
+    orderCount: 0,
+    avgOrderValue: 0,
+    topProducts: [] as any[]
+  });
 
-  const filtered = products.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const today = await orderAPI.getTodayTotal();
+        const orders = await orderAPI.getAll();
+        const monthly = await orderAPI.getMonthlyTotal(); 
+        const topProd = await orderAPI.getTopSelling(); 
 
-  function handleAdd(newProduct: any) {
-    setProducts([...products, { ...newProduct, id: Date.now() }]);
-    setShowAdd(false);
-  }
-  function handleEdit(updated: any) {
-    setProducts(products.map(p => p.id === updated.id ? updated : p));
-    setShowEdit(null);
-  }
-  function adjustStock(id: number, delta: number) {
-    setProducts(products.map(p => p.id === id ? { ...p, stock: Math.max(0, p.stock + delta) } : p));
-  }
+        const totalValue = orders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
+
+        setStats({
+          todaySales: today || 0,
+          monthSales: monthly || 0,
+          orderCount: orders.length,
+          avgOrderValue: orders.length > 0 ? totalValue / orders.length : 0,
+          topProducts: topProd || []
+        });
+      } catch (err) {
+        console.error("Stats load failed", err);
+      }
+    };
+    loadStats();
+  }, []);
 
   return (
     <section>
-      <h2 style={{ color: "#059669", fontWeight: 800, fontSize: 26, marginBottom: 24 }}>Inventory Management</h2>
-      <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 24, minHeight: 400 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 18, alignItems: "center" }}>
-          <input
-            type="text"
-            placeholder="Search product..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #16a34a", fontSize: 16, minWidth: 180 }}
-          />
-          <button onClick={() => setShowAdd(true)} style={{ background: "linear-gradient(90deg, #059669 0%, #16a34a 100%)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer" }}>Add Product</button>
-        </div>
-        <div style={{ overflowX: "auto" }}>
+      <h2 style={{ color: "#059669", fontWeight: 800, fontSize: 26, marginBottom: 24 }}>Business Overview</h2>
+      
+      {/* --- STATS GRID --- */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20, marginBottom: 32 }}>
+        <StatCard title="Today's Sales" value={`Ksh ${stats.todaySales.toLocaleString()}`} color="#059669" />
+        <StatCard title="This Month" value={`Ksh ${stats.monthSales.toLocaleString()}`} color="#2563eb" />
+        <StatCard title="Transactions" value={stats.orderCount.toString()} color="#1e293b" />
+        <StatCard title="Avg. Ticket" value={`Ksh ${stats.avgOrderValue.toFixed(0)}`} color="#7c3aed" />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24 }}>
+        {/* --- TOP PRODUCTS TABLE --- */}
+        <div style={{ background: "#fff", padding: 24, borderRadius: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: "#1e293b" }}>Top Selling Products</h3>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ color: "#16a34a", fontWeight: 700, fontSize: 16 }}>
-                <th style={{ padding: 8, borderBottom: "2px solid #bbf7d0" }}>Name</th>
-                <th style={{ padding: 8, borderBottom: "2px solid #bbf7d0" }}>Price</th>
-                <th style={{ padding: 8, borderBottom: "2px solid #bbf7d0" }}>Stock</th>
-                <th style={{ padding: 8, borderBottom: "2px solid #bbf7d0" }}>Unit</th>
-                <th style={{ padding: 8, borderBottom: "2px solid #bbf7d0" }}>Actions</th>
+              <tr style={{ textAlign: "left", color: "#64748b", fontSize: 13, borderBottom: "1px solid #f1f5f9" }}>
+                <th style={{ padding: "10px 0" }}>Product</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(p => (
-                <tr
-                  key={p.id}
-                  style={{
-                    textAlign: "center",
-                    color: p.stock < 20 ? "#b91c1c" : "#111",
-                    background: p.stock < 20 ? "#fef2f2" : undefined,
-                    fontWeight: 600
-                  }}
-                >
-                  <td style={{ padding: 8 }}>{p.name}</td>
-                  <td style={{ padding: 8 }}>Ksh {p.price.toFixed(2)}</td>
-                  <td style={{ padding: 8 }}>{p.stock}</td>
-                  <td style={{ padding: 8 }}>{p.unit}</td>
-                  <td style={{ padding: 8 }}>
-                    <button onClick={() => setShowEdit(p)} style={{ color: "#059669", border: "none", background: "none", fontWeight: 700, cursor: "pointer" }}>Edit</button>
-                  </td>
+              {stats.topProducts.map((p, i) => (
+                <tr key={i} style={{ borderBottom: "1px solid #f8fafc" }}>
+                  <td style={{ padding: "12px 0", fontWeight: 600, color: "#334155" }}>{p.name}</td>
+                  <td>{p.quantitySold}</td>
+                  <td style={{ fontWeight: 600, color: "#059669" }}>Ksh {p.revenue.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {showAdd && (
-          <ProductModal
-            onClose={() => setShowAdd(false)}
-            onSave={handleAdd}
-            title="Add Product"
-          />
-        )}
-        {showEdit && (
-          <ProductModal
-            onClose={() => setShowEdit(null)}
-            onSave={handleEdit}
-            product={showEdit}
-            title="Edit Product"
-          />
-        )}
+
+        {/* --- QUICK TIPS / ALERTS --- */}
+        <div style={{ background: "#f0fdf4", padding: 24, borderRadius: 16, border: "1px dashed #bbf7d0" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#166534" }}>Performance Insights</h3>
+          <p style={{ fontSize: 14, color: "#166534", lineHeight: 1.5 }}>
+            Your sales are up <b>12%</b> compared to last month. 
+            <br/><br/>
+            💡 <b>Tip:</b> Your highest traffic is between 4 PM and 7 PM. Ensure stock is replenished by noon.
+          </p>
+        </div>
       </div>
     </section>
   );
 }
 
-function ProductModal({ onClose, onSave, product, title }: { onClose: () => void; onSave: (product: any) => void; product?: any; title: string }) {
-  const [form, setForm] = useState<any>(product || { name: "", price: "", stock: "", unit: "pcs" });
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    // For stock, ensure only upward adjustment if editing
-    if (e.target.name === "stock" && product) {
-      const newStock = parseInt(e.target.value);
-      if (newStock < product.stock) return; // Block downward adjustment
-    }
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!form.name || !form.price || !form.stock) return;
-    onSave({ ...form, price: parseFloat(form.price), stock: parseInt(form.stock), unit: form.unit, id: product?.id || Date.now(), low: 10 });
-  }
+// Reusable Stat Card Component
+function StatCard({ title, value, color }: { title: string, value: string, color: string }) {
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
-      <form onSubmit={handleSubmit} style={{ background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 32, minWidth: 320, display: "flex", flexDirection: "column", gap: 16 }}>
-        <h3 style={{ color: "#059669", fontWeight: 800, fontSize: 22, marginBottom: 8 }}>{title}</h3>
-        <label style={{ color: "#059669", fontWeight: 600 }}>Product Name
-          <input name="name" value={form.name} onChange={handleChange} placeholder="Product Name" style={{ padding: 10, borderRadius: 8, border: "1px solid #16a34a", fontSize: 16, color: "#111", marginTop: 4, marginBottom: 10, width: "100%" }} required />
-        </label>
-        <label style={{ color: "#059669", fontWeight: 600 }}>Price
-          <input name="price" value={form.price} onChange={handleChange} placeholder="Price" type="number" min="0" step="0.01" style={{ padding: 10, borderRadius: 8, border: "1px solid #16a34a", fontSize: 16, color: "#111", marginTop: 4, marginBottom: 10, width: "100%" }} required />
-        </label>
-        <label style={{ color: "#059669", fontWeight: 600 }}>Stock
-          <input
-            name="stock"
-            value={form.stock}
-            onChange={handleChange}
-            placeholder="Stock"
-            type="number"
-            min={product ? product.stock : 0}
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #16a34a", fontSize: 16, color: "#111", marginTop: 4, marginBottom: 10, width: "100%" }}
-            required
-          />
-        </label>
-        <label style={{ color: "#059669", fontWeight: 600 }}>Unit
-          <select name="unit" value={form.unit} onChange={handleChange} style={{ padding: 10, borderRadius: 8, border: "1px solid #16a34a", fontSize: 16, color: "#111", marginTop: 4, marginBottom: 10, width: "100%" }}>
-            <option value="pcs">pcs</option>
-            <option value="kg">kg</option>
-          </select>
-        </label>
-        <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-          <button
-            type="submit"
-            style={{ background: "linear-gradient(90deg, #059669 0%, #16a34a 100%)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer" }}
-            disabled={product && Number(form.stock) < product.stock}
-            title={product && Number(form.stock) < product.stock ? "Stock can only be increased" : undefined}
-          >
-            Save
-          </button>
-          <button type="button" onClick={onClose} style={{ background: "#fff", color: "#059669", border: "1.5px solid #16a34a", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer" }}>Cancel</button>
-        </div>
-      </form>
+    <div style={{ background: "#fff", padding: 24, borderRadius: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.05)", borderLeft: `6px solid ${color}` }}>
+      <p style={{ color: "#64748b", fontSize: 13, fontWeight: 600, margin: 0 }}>{title}</p>
+      <h3 style={{ fontSize: 24, color: "#1e293b", margin: "8px 0 0 0" }}>{value}</h3>
     </div>
   );
 }
 
-const SECTIONS = [
-  "Dashboard",
-  "Inventory",
-  "Report"
-];
+// --- Orders Section ---
+function OrdersSection() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default function AdminPage() {
-  const [activeSection, setActiveSection] = useState(SECTIONS[0]);
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const data = await orderAPI.getAll();
+        setOrders(data);
+      } catch (err) {
+        console.error("Order fetch failed", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
+
+  if (loading) return <p>Loading Transactions...</p>;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        minWidth: "100vw",
-        height: "100vh",
-        width: "100vw",
-        background: "#f0fdf4",
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "'Montserrat', 'Segoe UI', Arial, sans-serif",
-        margin: 0,
-        padding: 0,
-        position: "fixed",
-        top: 0,
-        left: 0,
-        zIndex: 100,
-      }}
-    >
-      <header
-        style={{
-          width: "100%",
-          height: 64,
-          background: "linear-gradient(90deg, #059669 0%, #16a34a 100%)",
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: 900,
-          fontSize: 28,
-          letterSpacing: 2,
-          boxShadow: "0 2px 8px #bbf7d0",
-          position: "relative",
-        }}
-      >
-        ESIT GROCERIES
-      </header>
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <aside style={{ width: 240, background: "#fff", borderRight: "2px solid #bbf7d0", padding: "2rem 1rem", display: "flex", flexDirection: "column", gap: 24, justifyContent: "space-between", height: "100vh" }}>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 28, color: "#059669", marginBottom: 32, letterSpacing: 2, textAlign: "center" }}>
-              Admin Panel
-            </div>
-            {SECTIONS.map(section => (
-              <button
-                key={section}
-                onClick={() => setActiveSection(section)}
-                style={{
-                  background: activeSection === section ? "linear-gradient(90deg, #059669 0%, #16a34a 100%)" : "#fff",
-                  color: activeSection === section ? "#fff" : "#059669",
-                  fontWeight: 700,
-                  border: activeSection === section ? "none" : "1.5px solid #bbf7d0",
-                  borderRadius: 10,
-                  padding: "0.9rem 1.2rem",
-                  marginBottom: 6,
-                  cursor: "pointer",
-                  fontSize: 17,
-                  boxShadow: activeSection === section ? "0 2px 8px #bbf7d0" : "none",
-                  transition: "all 0.2s"
-                }}
-              >
-                {section}
-              </button>
+    <section>
+      <h2 style={{ color: "#059669", fontWeight: 800, fontSize: 26, marginBottom: 24 }}>Transaction History</h2>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 24, boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ textAlign: "left", color: "#64748b", borderBottom: "2px solid #f1f5f9" }}>
+              <th style={{ padding: 12 }}>Order ID</th>
+              <th style={{ padding: 12 }}>Date</th>
+              <th style={{ padding: 12 }}>Method</th>
+              <th style={{ padding: 12 }}>Items</th>
+              <th style={{ padding: 12 }}>Total</th>
+              <th style={{ padding: 12 }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((order) => (
+              <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                <td style={{ padding: 12, fontWeight: 700 }}>#{order.id}</td>
+                <td style={{ padding: 12 }}>{new Date(order.createdAt).toLocaleDateString()}</td>
+                <td style={{ padding: 12 }}>{order.paymentMethod}</td>
+                <td style={{ padding: 12 }}>{order.orderItems?.length || 0}</td>
+                <td style={{ padding: 12, fontWeight: 600 }}>Ksh {order.totalAmount?.toFixed(2)}</td>
+                <td style={{ padding: 12 }}>
+                  <span style={{ 
+                    padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 800,
+                    background: order.status === "COMPLETED" ? "#dcfce7" : "#fef9c3",
+                    color: order.status === "COMPLETED" ? "#166534" : "#854d0e"
+                  }}>
+                    {order.status}
+                  </span>
+                </td>
+              </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// --- Inventory Section ---
+function InventorySection() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState<any>(null);
+
+  const loadInventory = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await inventoryAPI.getAll();
+      setItems(data);
+    } catch (err) {
+      console.error("Failed to load inventory:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInventory();
+  }, [loadInventory]);
+
+  const filtered = items.filter(item =>
+    item.product?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    item.product?.code?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  async function handleAdd(formData: any) {
+    try {
+      const product = await productAPI.create({
+        name: formData.name,
+        code: formData.code,
+        sellingPrice: parseFloat(formData.price),
+        markedPrice: parseFloat(formData.price),
+        type: formData.type
+      });
+      await inventoryAPI.create({
+        productId: product.id,
+        quantity: parseInt(formData.stock)
+      });
+      loadInventory();
+      setShowAdd(false);
+    } catch (err: any) {
+      alert(`Save failed: ${err.message}`);
+    }
+  }
+
+  async function handleEdit(updatedData: any) {
+    try {
+      await inventoryAPI.update(updatedData.inventoryId, {
+        quantity: parseInt(updatedData.stock)
+      });
+      await productAPI.update(updatedData.productId, {
+        name: updatedData.name,
+        code: updatedData.code, 
+        sellingPrice: parseFloat(updatedData.price)
+      });
+      loadInventory();
+      setShowEdit(null);
+    } catch (err: any) {
+      alert(`Update failed: ${err.message}`);
+    }
+  }
+
+  if (loading) return <p style={{ color: "#059669", padding: 20 }}>Syncing with Store Database...</p>;
+
+  return (
+    <section>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <h2 style={{ color: "#059669", fontWeight: 800, fontSize: 26 }}>Inventory</h2>
+        <button 
+          onClick={() => setShowAdd(true)} 
+          style={{ background: "#059669", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}
+        >
+          + Add New Product
+        </button>
+      </div>
+
+      <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.05)", padding: 24 }}>
+        <input
+          type="text"
+          placeholder="Search by name or code..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ width: "100%", padding: 12, borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 20 }}
+        />
+        
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ textAlign: "left", color: "#64748b", borderBottom: "2px solid #f1f5f9" }}>
+              <th style={{ padding: 12 }}>Code</th>
+              <th style={{ padding: 12 }}>Product Name</th>
+              <th style={{ padding: 12 }}>Price</th>
+              <th style={{ padding: 12 }}>In Stock</th>
+              <th style={{ padding: 12 }}>Status</th>
+              <th style={{ padding: 12 }}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(item => (
+              <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                <td style={{ padding: 12, color: "#64748b", fontSize: 13 }}>{item.product?.code}</td>
+                <td style={{ padding: 12, fontWeight: 600 }}>{item.product?.name}</td>
+                <td style={{ padding: 12 }}>Ksh {item.product?.sellingPrice?.toFixed(2)}</td>
+                <td style={{ padding: 12 }}>{item.quantity}</td>
+                <td style={{ padding: 12 }}>
+                  <span style={{ 
+                    padding: "4px 8px", borderRadius: 6, fontSize: 12, fontWeight: 700,
+                    background: item.quantity < 10 ? "#fee2e2" : "#dcfce7",
+                    color: item.quantity < 10 ? "#991b1b" : "#166534"
+                  }}>
+                    {item.quantity < 10 ? "Low Stock" : "In Stock"}
+                  </span>
+                </td>
+                <td style={{ padding: 12 }}>
+                  <button 
+                    onClick={() => setShowEdit({
+                      inventoryId: item.id,
+                      productId: item.product?.id,
+                      name: item.product?.name,
+                      code: item.product?.code,
+                      price: item.product?.sellingPrice,
+                      stock: item.quantity
+                    })} 
+                    style={{ color: "#059669", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                  >
+                    Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showAdd && <ProductModal onClose={() => setShowAdd(false)} onSave={handleAdd} title="Add Product" />}
+      {showEdit && (
+        <ProductModal 
+          onClose={() => setShowEdit(null)} 
+          onSave={handleEdit} 
+          product={showEdit} 
+          title="Edit Product" 
+        />
+      )}
+    </section>
+  );
+}
+
+// --- Main Layout ---
+export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState("Dashboard");
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // Clear token or auth data from storage
+    localStorage.removeItem("token"); 
+    // Redirect to login page
+    router.push("/login"); 
+  };
+
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>
+      {/* Sidebar */}
+      <aside style={{ 
+        width: 260, 
+        background: "#fff", 
+        borderRight: "1px solid #e2e8f0", 
+        padding: 30, 
+        display: "flex", 
+        flexDirection: "column",
+        justifyContent: "space-between" 
+      }}>
+        <div>
+          <div style={{ color: "#059669", fontSize: 22, fontWeight: 900, marginBottom: 40 }}>RETAIL POS</div>
+          {["Dashboard", "Inventory", "Orders"].map(tab => (
+            <div 
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{ 
+                padding: "12px 16px", cursor: "pointer", borderRadius: 8, marginBottom: 8,
+                background: activeTab === tab ? "#f0fdf4" : "transparent",
+                color: activeTab === tab ? "#059669" : "#64748b",
+                fontWeight: activeTab === tab ? 700 : 500
+              }}
+            >
+              {tab}
+            </div>
+          ))}
+        </div>
+
+        {/* Logout Button */}
+        <button 
+          onClick={handleLogout}
+          style={{
+            marginTop: "auto",
+            padding: "12px 16px",
+            background: "#fee2e2",
+            color: "#991b1b",
+            border: "none",
+            borderRadius: 8,
+            fontWeight: 700,
+            cursor: "pointer",
+            textAlign: "left"
+          }}
+        >
+          Logout
+        </button>
+      </aside>
+
+      <main style={{ flex: 1, padding: 40 }}>
+        {activeTab === "Dashboard" && <DashboardSection />}
+        {activeTab === "Inventory" && <InventorySection />}
+        {activeTab === "Orders" && <OrdersSection />}
+      </main>
+    </div>
+  );
+}
+
+// --- Modal Component ---
+function ProductModal({ onClose, onSave, product, title }: any) {
+  const [form, setForm] = useState(product || { name: "", price: "", stock: "", code: "", type:"FIXED" });
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 50 }}>
+      <div style={{ background: "#fff", padding: 32, borderRadius: 16, width: 400, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
+        <h3 style={{ marginBottom: 20, fontSize: 20, fontWeight: 700 }}>{title}</h3>
+        
+        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>Selling Method</label>
+        <select 
+          style={{ width: "100%", padding: 10, marginBottom: 16, border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff" }}
+          value={form.type}
+          onChange={e => setForm({...form, type: e.target.value})}
+        >
+          <option value="FIXED">Fixed Price (Per Piece/Pack)</option>
+          <option value="WEIGHED">Weighed (Per KG/Scale Item)</option>
+        </select>
+        
+        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>Item Code / SKU</label>
+        <input 
+          placeholder="e.g. BEV-001"
+          style={{ width: "100%", padding: 10, marginBottom: 16, border: "1px solid #e2e8f0", borderRadius: 8 }} 
+          value={form.code} 
+          onChange={e => setForm({...form, code: e.target.value})} 
+        />
+
+        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>Product Name</label>
+        <input 
+          style={{ width: "100%", padding: 10, marginBottom: 16, border: "1px solid #e2e8f0", borderRadius: 8 }} 
+          value={form.name} 
+          onChange={e => setForm({...form, name: e.target.value})} 
+        />
+        
+        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>Price (Ksh)</label>
+            <input 
+              type="number" 
+              style={{ width: "100%", padding: 10, border: "1px solid #e2e8f0", borderRadius: 8 }} 
+              value={form.price} 
+              onChange={e => setForm({...form, price: e.target.value})} 
+            />
           </div>
-          <button
-            title="Logout"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              background: "#fff",
-              color: "#b91c1c",
-              border: "1.5px solid #b91c1c",
-              borderRadius: 10,
-              padding: "0.9rem 1.2rem",
-              fontWeight: 700,
-              fontSize: 17,
-              cursor: "pointer",
-              marginTop: 8,
-              marginBottom: 32
+          <div style={{ flex: 1 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>Stock Qty</label>
+            <input 
+              type="number" 
+              style={{ width: "100%", padding: 10, border: "1px solid #e2e8f0", borderRadius: 8 }} 
+              value={form.stock} 
+              onChange={e => setForm({...form, stock: e.target.value})} 
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+          <button 
+            onClick={() => onSave(form)} 
+            disabled={!form.code || !form.name}
+            style={{ 
+              flex: 1, background: (!form.code || !form.name) ? "#94a3b8" : "#059669", 
+              color: "#fff", border: "none", padding: 12, borderRadius: 8, cursor: "pointer", fontWeight: 700 
             }}
-            onClick={() => alert('Logged out!')}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1"/></svg>
-            Logout
+            Save Changes
           </button>
-        </aside>
-        <main style={{ flex: 1, padding: "2.5rem 3.5rem", background: "#f0fdf4", minHeight: 0, overflow: "auto" }}>
-          {activeSection === "Dashboard" && (
-            <section>
-              <h2 style={{ color: "#059669", fontWeight: 800, fontSize: 26, marginBottom: 24 }}>Dashboard Overview</h2>
-              <div style={{ display: "flex", gap: 32, marginBottom: 32 }}>
-                <div style={{ flex: 1, background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 32, textAlign: "center" }}>
-                  <div style={{ color: "#059669", fontWeight: 700, fontSize: 20, marginBottom: 12 }}>Today's Sales</div>
-                  <div style={{ fontSize: 32, fontWeight: 900, color: "#16a34a" }}>Ksh 2,500.00</div>
-                  <div style={{ color: "#64748b", fontSize: 15, marginTop: 8 }}>45 transactions</div>
-                </div>
-                <div style={{ flex: 1, background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 32, textAlign: "center" }}>
-                  <div style={{ color: "#059669", fontWeight: 700, fontSize: 20, marginBottom: 12 }}>This Week's Sales</div>
-                  <div style={{ fontSize: 32, fontWeight: 900, color: "#16a34a" }}>Ksh 15,800.00</div>
-                  <div style={{ color: "#64748b", fontSize: 15, marginTop: 8 }}>320 transactions</div>
-                </div>
-                <div style={{ flex: 1, background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 32, textAlign: "center" }}>
-                  <div style={{ color: "#059669", fontWeight: 700, fontSize: 20, marginBottom: 12 }}>This Month's Sales</div>
-                  <div style={{ fontSize: 32, fontWeight: 900, color: "#16a34a" }}>Ksh 62,400.00</div>
-                  <div style={{ color: "#64748b", fontSize: 15, marginTop: 8 }}>1,250 transactions</div>
-                </div>
-              </div>
-              {/* Transaction List */}
-              <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 24 }}>
-                <h3 style={{ color: "#059669", fontWeight: 700, fontSize: 20, marginBottom: 18 }}>Recent Transactions</h3>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "2px solid #059669", color: "#059669", fontWeight: 700, fontSize: 16 }}>
-                  <span style={{ flex: 1, textAlign: "left" }}>Date & Time</span>
-                  <span style={{ flex: 1, textAlign: "left" }}>Amount</span>
-                  <span style={{ flex: 1, textAlign: "left" }}>Transaction Code</span>
-                </div>
-                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                  {[
-                    { id: 1, date: "2026-01-23 15:42", amount: 1200, code: "MPESA123ABC" },
-                    { id: 2, date: "2026-01-23 14:10", amount: 800, code: "Cash" },
-                    { id: 3, date: "2026-01-23 13:55", amount: 500, code: "MPESA456DEF" },
-                    { id: 4, date: "2026-01-23 12:30", amount: 300, code: "Cash" },
-                  ].map(tx => (
-                    <li key={tx.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #bbf7d0", color: "#111", fontSize: 16 }}>
-                      <span style={{ flex: 1, fontWeight: 700, textAlign: "left" }}>{tx.date}</span>
-                      <span style={{ flex: 1, textAlign: "left" }}>Ksh {tx.amount.toFixed(2)}</span>
-                      <span style={{ flex: 1, textAlign: "left" }}>{tx.code}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </section>
-          )}
-          {activeSection === "Inventory" && <InventorySection />}
-          {activeSection === "Report" && (
-            <section>
-              <h2 style={{ color: "#059669", fontWeight: 800, fontSize: 26, marginBottom: 24 }}>Sales & Inventory Report</h2>
-              {/* Sales Summary Charts (placeholder) */}
-              <div style={{ display: "flex", gap: 32, marginBottom: 32 }}>
-                <div style={{ flex: 1, background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 24, textAlign: "center" }}>
-                  <div style={{ color: "#059669", fontWeight: 700, fontSize: 20, marginBottom: 12 }}>Top-Selling Products</div>
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, color: "#111", fontSize: 16 }}>
-                    <li>Apple - 120 pcs sold</li>
-                    <li>Banana - 80 pcs sold</li>
-                    <li>Potato - 70 kg sold</li>
-                  </ul>
-                </div>
-                <div style={{ flex: 1, background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 24, textAlign: "center" }}>
-                  <div style={{ color: "#059669", fontWeight: 700, fontSize: 20, marginBottom: 12 }}>Payment Breakdown</div>
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, color: "#111", fontSize: 16 }}>
-                    <li>Mpesa: Ksh 8,500.00</li>
-                    <li>Cash: Ksh 7,300.00</li>
-                  </ul>
-                </div>
-              </div>
-              {/* Filterable Sales Table (placeholder) */}
-              <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 24, marginBottom: 32 }}>
-                <h3 style={{ color: "#059669", fontWeight: 700, fontSize: 20, marginBottom: 18, textAlign: "left" }}>Sales Table</h3>
-                <input type="text" placeholder="Filter by product or date..." style={{ padding: 8, borderRadius: 8, border: "1px solid #16a34a", fontSize: 15, marginBottom: 12, minWidth: 180 }} />
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ color: "#16a34a", fontWeight: 700, fontSize: 16, textAlign: "left" }}>
-                      <th style={{ padding: 8, borderBottom: "2px solid #bbf7d0", textAlign: "left" }}>Date</th>
-                      <th style={{ padding: 8, borderBottom: "2px solid #bbf7d0", textAlign: "left" }}>Product</th>
-                      <th style={{ padding: 8, borderBottom: "2px solid #bbf7d0", textAlign: "left" }}>Amount</th>
-                      <th style={{ padding: 8, borderBottom: "2px solid #bbf7d0", textAlign: "left" }}>Payment</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr style={{ color: "#111", fontSize: 15 }}>
-                      <td style={{ padding: 8 }}>2026-01-23</td>
-                      <td style={{ padding: 8 }}>Apple</td>
-                      <td style={{ padding: 8 }}>Ksh 500.00</td>
-                      <td style={{ padding: 8 }}>Mpesa</td>
-                    </tr>
-                    <tr style={{ color: "#111", fontSize: 15 }}>
-                      <td style={{ padding: 8 }}>2026-01-23</td>
-                      <td style={{ padding: 8 }}>Banana</td>
-                      <td style={{ padding: 8 }}>Ksh 300.00</td>
-                      <td style={{ padding: 8 }}>Cash</td>
-                    </tr>
-                  </tbody>
-                </table>
-                <button style={{ marginTop: 16, background: "#059669", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 700, cursor: "pointer" }}>Export to PDF</button>
-              </div>
-              {/* Low Stock Alerts */}
-              <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #bbf7d0", padding: 24, marginBottom: 32 }}>
-                <h3 style={{ color: "#b91c1c", fontWeight: 700, fontSize: 20, marginBottom: 18 }}>Low Stock Alerts</h3>
-                <ul style={{ listStyle: "none", padding: 0, margin: 0, color: "#b91c1c", fontSize: 16 }}>
-                  <li>Onion: 8 kg left</li>
-                  <li>Potato: 12 kg left</li>
-                </ul>
-              </div>
-            </section>
-          )}
-        </main>
+          <button 
+            onClick={onClose} 
+            style={{ flex: 1, background: "#f1f5f9", color: "#64748b", border: "none", padding: 12, borderRadius: 8, cursor: "pointer" }}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
