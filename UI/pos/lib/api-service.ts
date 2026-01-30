@@ -1,7 +1,7 @@
 // API Service utility for centralized API calls
 // This provides a clean interface to your Spring Boot backend
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 // Helper function to get auth token
 export const getAuthToken = (): string | null => {
