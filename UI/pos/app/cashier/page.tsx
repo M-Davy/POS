@@ -243,13 +243,22 @@ useEffect(() => {
           <style>
             @page { size: 80mm auto; margin: 0; }
             * { box-sizing: border-box; }
+            html, body {
+              margin: 0;
+              padding: 0;
+            }
             body {
               font-family: 'Courier New', Courier, monospace;
-              width: 72mm;
-              padding: 4mm;
+              padding: 0;
               font-size: 12px;
               color: #000;
-              margin: 0;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .receipt {
+              width: 72mm;
+              margin: 0 auto;
+              padding: 4mm;
             }
             .divider { border-top: 1px dashed #000; margin: 5px 0; }
             .center { text-align: center; }
@@ -292,75 +301,70 @@ useEffect(() => {
           </style>
         </head>
         <body>
-          <div class="center bold" style="font-size:15px;">ESIT GROCERIES</div>
-          <div class="center" style="font-size:11px;">Fresh from the Farm</div>
-          <div class="center" style="font-size:11px;">Nairobi, Kenya</div>
-          <div class="center" style="font-size:11px;">${receiptDate}</div>
-          <div class="divider"></div>
+          <div class="receipt">
+            <div class="center bold" style="font-size:15px;">ESIT GROCERIES</div>
+            <div class="center" style="font-size:11px;">Fresh from the Farm</div>
+            <div class="center" style="font-size:11px;">Nairobi, Kenya</div>
+            <div class="center" style="font-size:11px;">${receiptDate}</div>
+            <div class="divider"></div>
 
-          <table class="receipt-table">
-            <colgroup>
-              <col class="col-item" />
-              <col class="col-qty" />
-              <col class="col-total" />
-            </colgroup>
-            <thead class="bold">
+            <table class="receipt-table">
+              <colgroup>
+                <col class="col-item" />
+                <col class="col-qty" />
+                <col class="col-total" />
+              </colgroup>
+              <thead class="bold">
+                <tr>
+                  <th class="col-item">ITEM</th>
+                  <th class="col-qty">QTY</th>
+                  <th class="col-total">TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemRows}
+              </tbody>
+            </table>
+
+            <div class="divider"></div>
+
+            <table class="summary-table">
               <tr>
-                <th class="col-item">ITEM</th>
-                <th class="col-qty">QTY</th>
-                <th class="col-total">TOTAL</th>
+                <td style="width:60%;">Subtotal:</td>
+                <td style="width:40%; text-align:right;">Ksh ${total.toFixed(2)}</td>
               </tr>
-            </thead>
-          </table>
+              <tr>
+                <td>Payment:</td>
+                <td style="text-align:right;">${paymentMethod.toUpperCase()}</td>
+              </tr>
+              ${change ? `<tr><td>Change:</td><td style="text-align:right;">Ksh ${change}</td></tr>` : ''}
+            </table>
 
-          <div class="divider"></div>
+            <div class="divider"></div>
 
-          <table class="receipt-table">
-            <colgroup>
-              <col class="col-item" />
-              <col class="col-qty" />
-              <col class="col-total" />
-            </colgroup>
-            <tbody>
-              ${itemRows}
-            </tbody>
-          </table>
+            <table class="summary-table bold">
+              <tr>
+                <td style="width:60%;">GRAND TOTAL</td>
+                <td style="width:40%; text-align:right;">Ksh ${total.toFixed(2)}</td>
+              </tr>
+            </table>
 
-          <div class="divider"></div>
-
-          <table class="summary-table">
-            <tr>
-              <td style="width:60%;">Subtotal:</td>
-              <td style="width:40%; text-align:right;">Ksh ${total.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td>Payment:</td>
-              <td style="text-align:right;">${paymentMethod.toUpperCase()}</td>
-            </tr>
-            ${change ? `<tr><td>Change:</td><td style="text-align:right;">Ksh ${change}</td></tr>` : ''}
-          </table>
-
-          <div class="divider"></div>
-
-          <table class="summary-table bold">
-            <tr>
-              <td style="width:60%;">GRAND TOTAL</td>
-              <td style="width:40%; text-align:right;">Ksh ${total.toFixed(2)}</td>
-            </tr>
-          </table>
-
-          <div class="divider"></div>
-          <div class="center" style="margin-top:6px; font-size:11px;">THANK YOU FOR YOUR PATRONAGE</div>
-          <div class="center" style="font-size:10px;">Powered by Esit Farm</div>
+            <div class="divider"></div>
+            <div class="center" style="margin-top:6px; font-size:11px;">THANK YOU FOR YOUR PATRONAGE</div>
+            <div class="center" style="font-size:10px;">Powered by Esit Farm</div>
+          </div>
         </body>
       </html>
     `);
 
     printWindow.document.close();
-    setTimeout(() => {
+    printWindow.onload = () => {
+      printWindow.focus();
       printWindow.print();
+    };
+    printWindow.onafterprint = () => {
       printWindow.close();
-    }, 250);
+    };
   };
 
   // Complete payment
