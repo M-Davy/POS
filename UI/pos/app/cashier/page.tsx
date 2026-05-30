@@ -223,65 +223,143 @@ useEffect(() => {
     }
   
     const receiptDate = new Date().toLocaleString();
-  
+
     const itemRows = cart.map(item => `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-        <span style="flex: 2;">${item.name.substring(0, 18)}${item.name.length > 18 ? '..' : ''}</span>
-        <span style="flex: 1; text-align: right;">${item.qty}${item.type === 'WEIGHED' ? 'kg' : ''}</span>
-        <span style="flex: 1; text-align: right;">${(item.sellingPrice * item.qty).toFixed(2)}</span>
-      </div>
+      <tr>
+        <td class="col-item">${item.name.substring(0, 24)}${item.name.length > 24 ? '..' : ''}</td>
+        <td class="col-qty">${item.qty}${item.type === 'WEIGHED' ? 'kg' : ''}</td>
+        <td class="col-total">${(item.sellingPrice * item.qty).toFixed(2)}</td>
+      </tr>
     `).join('');
-  
-    // 2. Write content to the document
+
+    const change = paymentMethod === 'cash' && cashGiven
+      ? (Number(cashGiven) - total > 0 ? (Number(cashGiven) - total).toFixed(2) : '0.00')
+      : null;
+
     printWindow.document.write(`
       <html>
         <head>
           <title>Receipt</title>
           <style>
             @page { size: 80mm auto; margin: 0; }
-            body { 
-              font-family: 'Courier New', Courier, monospace; 
-              width: 72mm; /* Standard printable area for 80mm paper */
-              padding: 4mm; 
-              font-size: 12px; 
+            * { box-sizing: border-box; }
+            body {
+              font-family: 'Courier New', Courier, monospace;
+              width: 72mm;
+              padding: 4mm;
+              font-size: 12px;
               color: #000;
+              margin: 0;
             }
             .divider { border-top: 1px dashed #000; margin: 5px 0; }
             .center { text-align: center; }
             .bold { font-weight: bold; }
+            .receipt-table {
+              width: 100%;
+              table-layout: fixed;
+              border-collapse: collapse;
+            }
+            .receipt-table col.col-item { width: 50%; }
+            .receipt-table col.col-qty { width: 20%; }
+            .receipt-table col.col-total { width: 30%; }
+            .receipt-table th,
+            .receipt-table td {
+              padding: 2px 0;
+              vertical-align: top;
+            }
+            .col-item {
+              text-align: left;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              padding-right: 4px;
+            }
+            .col-qty {
+              text-align: center;
+              white-space: nowrap;
+            }
+            .col-total {
+              text-align: right;
+              white-space: nowrap;
+            }
+            .summary-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .summary-table td {
+              padding: 2px 0;
+            }
           </style>
         </head>
         <body>
-          <div class="center bold" style="font-size: 16px;">ESIT GROCERIES</div>
-          <div class="center">Nairobi, Kenya</div>
-          <div class="center">${receiptDate}</div>
+          <div class="center bold" style="font-size:15px;">ESIT GROCERIES</div>
+          <div class="center" style="font-size:11px;">Fresh from the Farm</div>
+          <div class="center" style="font-size:11px;">Nairobi, Kenya</div>
+          <div class="center" style="font-size:11px;">${receiptDate}</div>
           <div class="divider"></div>
-          <div style="display: flex; justify-content: space-between;" class="bold">
-            <span style="flex: 2;">ITEM</span>
-            <span style="flex: 1; text-align: right;">QTY</span>
-            <span style="flex: 1; text-align: right;">TOTAL</span>
-          </div>
+
+          <table class="receipt-table">
+            <colgroup>
+              <col class="col-item" />
+              <col class="col-qty" />
+              <col class="col-total" />
+            </colgroup>
+            <thead class="bold">
+              <tr>
+                <th class="col-item">ITEM</th>
+                <th class="col-qty">QTY</th>
+                <th class="col-total">TOTAL</th>
+              </tr>
+            </thead>
+          </table>
+
           <div class="divider"></div>
-          ${itemRows}
+
+          <table class="receipt-table">
+            <colgroup>
+              <col class="col-item" />
+              <col class="col-qty" />
+              <col class="col-total" />
+            </colgroup>
+            <tbody>
+              ${itemRows}
+            </tbody>
+          </table>
+
           <div class="divider"></div>
-          <div style="display: flex; justify-content: space-between;" class="bold">
-            <span>GRAND TOTAL</span>
-            <span>Ksh ${total.toFixed(2)}</span>
-          </div>
+
+          <table class="summary-table">
+            <tr>
+              <td style="width:60%;">Subtotal:</td>
+              <td style="width:40%; text-align:right;">Ksh ${total.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Payment:</td>
+              <td style="text-align:right;">${paymentMethod.toUpperCase()}</td>
+            </tr>
+            ${change ? `<tr><td>Change:</td><td style="text-align:right;">Ksh ${change}</td></tr>` : ''}
+          </table>
+
           <div class="divider"></div>
-          <div class="center">THANK YOU FOR YOUR PATRONAGE</div>
+
+          <table class="summary-table bold">
+            <tr>
+              <td style="width:60%;">GRAND TOTAL</td>
+              <td style="width:40%; text-align:right;">Ksh ${total.toFixed(2)}</td>
+            </tr>
+          </table>
+
+          <div class="divider"></div>
+          <div class="center" style="margin-top:6px; font-size:11px;">THANK YOU FOR YOUR PATRONAGE</div>
+          <div class="center" style="font-size:10px;">Powered by Esit Farm</div>
         </body>
       </html>
     `);
-  
-    // 3. Close the document stream and trigger print
+
     printWindow.document.close();
-    
-    // Small timeout ensures styles are loaded before print dialog pops up
     setTimeout(() => {
       printWindow.print();
-      // Optional: close the tab after printing
-      // printWindow.close(); 
+      printWindow.close();
     }, 250);
   };
 
