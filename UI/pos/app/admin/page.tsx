@@ -319,73 +319,130 @@ function InventorySection() {
   );
 }
 
-// --- Main Layout ---
-export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState("Dashboard");
-  const router = useRouter();
+// --- Daily Sales Section ---
+function DailySalesSection() {
+  const [groupedSales, setGroupedSales] = useState<{
+    date: string;
+    day: string;
+    total: number;
+    transactions: { id: number; time: string; totalAmount: number; paymentMethod: string; status: string }[];
+  }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const handleLogout = () => {
-    // Clear token or auth data from storage
-    localStorage.removeItem("token"); 
-    // Redirect to login page
-    router.push("/login"); 
-  };
+  useEffect(() => {
+    const fetchAndGroup = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const orders = await orderAPI.getAll();
+        // Group by date string (YYYY-MM-DD) in EAT (Africa/Nairobi)
+        const grouped: Record<string, {
+          total: number;
+          day: string;
+          transactions: { id: number; time: string; totalAmount: number; paymentMethod: string; status: string }[];
+        }> = {};
+        orders.forEach((order: any) => {
+          const d = new Date(order.createdAt);
+          // Convert to EAT (Africa/Nairobi)
+          const eatDate = new Date(d.toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+          const dateStr = eatDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
+          const dayStr = eatDate.toLocaleDateString('en-US', { weekday: 'long' });
+          const timeStr = eatDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Nairobi' });
+          if (!grouped[dateStr]) grouped[dateStr] = { total: 0, day: dayStr, transactions: [] };
+          grouped[dateStr].total += order.totalAmount || 0;
+          grouped[dateStr].transactions.push({
+            id: order.id,
+            time: timeStr,
+            totalAmount: order.totalAmount || 0,
+            paymentMethod: order.paymentMethod,
+            status: order.status
+          });
+        });
+        // Convert to array and sort descending by date
+        const arr = Object.entries(grouped)
+          .map(([date, v]) => ({ date, day: v.day, total: v.total, transactions: v.transactions }))
+          .sort((a, b) => b.date.localeCompare(a.date));
+        setGroupedSales(arr);
+      } catch (err: any) {
+        setError(err.message || "Failed to load daily sales");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAndGroup();
+  }, []);
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>
-      {/* Sidebar */}
-      <aside style={{ 
-        width: 260, 
-        background: "#fff", 
-        borderRight: "1px solid #e2e8f0", 
-        padding: 30, 
-        display: "flex", 
-        flexDirection: "column",
-        justifyContent: "space-between" 
-      }}>
-        <div>
-          <div style={{ color: "#059669", fontSize: 22, fontWeight: 900, marginBottom: 40 }}>RETAIL POS</div>
-          {["Dashboard", "Inventory", "Orders"].map(tab => (
-            <div 
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{ 
-                padding: "12px 16px", cursor: "pointer", borderRadius: 8, marginBottom: 8,
-                background: activeTab === tab ? "#f0fdf4" : "transparent",
-                color: activeTab === tab ? "#059669" : "#64748b",
-                fontWeight: activeTab === tab ? 700 : 500
-              }}
-            >
-              {tab}
+    <section style={{ margin: "40px 0" }}>
+      <h2 style={{ color: "#059669", fontWeight: 800, fontSize: 22, marginBottom: 18 }}>Daily Sales Summary</h2>
+      {loading ? (
+        <div style={{ color: "#64748b", padding: 12 }}>Loading daily sales...</div>
+      ) : error ? (
+        <div style={{ color: "#dc2626", padding: 12 }}>{error}</div>
+      ) : groupedSales.length === 0 ? (
+        <div style={{ color: "#64748b", padding: 16 }}>No sales data</div>
+      ) : (
+        groupedSales.map((day, idx) => (
+          <div key={idx} style={{ marginBottom: 32, background: "#fff", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.03)", padding: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 17, color: "#059669" }}>
+                {day.day}, {new Date(day.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 17, color: "#059669" }}>
+                Total: Ksh {day.total.toLocaleString()}
+              </div>
             </div>
-          ))}
-        </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
+              <thead>
+                <tr style={{ background: "#f0fdf4", color: "#059669", fontWeight: 700, fontSize: 15 }}>
+                  <th style={{ padding: "8px 0" }}>Order ID</th>
+                  <th>Time (EAT)</th>
+                  <th>Amount (Ksh)</th>
+                  <th>Payment</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {day.transactions.length === 0 ? (
+                  <tr><td colSpan={5} style={{ textAlign: "center", color: "#64748b", padding: 12 }}>No transactions</td></tr>
+                ) : day.transactions.map((t, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "8px 0", fontWeight: 700 }}>#{t.id}</td>
+                    <td>{t.time}</td>
+                    <td style={{ fontWeight: 600, color: "#059669" }}>Ksh {t.totalAmount.toLocaleString()}</td>
+                    <td>{t.paymentMethod}</td>
+                    <td>{t.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))
+      )}
+    </section>
+  );
+}
 
-        {/* Logout Button */}
-        <button 
-          onClick={handleLogout}
-          style={{
-            marginTop: "auto",
-            padding: "12px 16px",
-            background: "#fee2e2",
-            color: "#991b1b",
-            border: "none",
-            borderRadius: 8,
-            fontWeight: 700,
-            cursor: "pointer",
-            textAlign: "left"
-          }}
-        >
-          Logout
-        </button>
-      </aside>
+// --- Main Layout ---
+export default function AdminPage() {
+  const router = useRouter();
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    router.push('/login');
+  }, [router]);
 
-      <main style={{ flex: 1, padding: 40 }}>
-        {activeTab === "Dashboard" && <DashboardSection />}
-        {activeTab === "Inventory" && <InventorySection />}
-        {activeTab === "Orders" && <OrdersSection />}
-      </main>
-    </div>
+  return (
+    <main style={{ background: "#f0fdf4", minHeight: "100vh", padding: "2.5rem 2rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+        <h1 style={{ color: "#059669", fontWeight: 900, fontSize: 32, letterSpacing: 1 }}>Admin Dashboard</h1>
+        <button onClick={handleLogout} style={{ padding: "10px 20px", background: "#dc2626", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Logout</button>
+      </div>
+      <DashboardSection />
+      <DailySalesSection />
+      <OrdersSection />
+    </main>
   );
 }
 
